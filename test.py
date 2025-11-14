@@ -1,119 +1,108 @@
+# skyfield_textual_download.py
+from pathlib import Path
+import requests
+
+from skyfield.api import Loader
+from textual import work
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Button
-from textual.containers import Container, Vertical
-from textual.binding import Binding
+from textual.worker import get_current_worker
+from textual.widgets import ProgressBar, Button, Static
+from textual.containers import Vertical
 
+# adjust this directory for your cache
+DATA_DIR = Path(".") / ".skyfield-data"
+loader = Loader(str(DATA_DIR), verbose=False)  # verbose=False avoids terminal prints
 
-class NotificationApp(App):
-    """Example app showing different notification types."""
+FILE_NAME = "de421.bsp"  # example; replace with the BSP you want
 
+class DownloaderApp(App):
     CSS = """
-    Screen {
-        align: center middle;
-    }
-
-    Vertical {
-        width: 60;
-        height: auto;
-        border: round $primary;
-        padding: 2 4;
-        background: $surface;
-    }
-
-    Button {
-        width: 100%;
-        margin: 1 0;
-    }
-
-    /* Customize toast appearance (optional) */
-    Toast.-information {
-        background: $primary-darken-2;
-        border: solid $primary;
-    }
-
-    Toast.-warning {
-        background: $warning-darken-2;
-        border: solid $warning;
-    }
-
-    Toast.-error {
-        background: $error-darken-2;
-        border: solid $error;
-    }
+    ProgressBar { height: 1 }
     """
 
-    BINDINGS = [
-        Binding("ctrl+c", "show_quit_message", "Attempt Quit", show=False),
-        Binding("ctrl+q", "quit", "Quit", show=True),
-        Binding("i", "info_notification", "Info", show=True),
-        Binding("w", "warning_notification", "Warning", show=True),
-        Binding("e", "error_notification", "Error", show=True),
-    ]
-
     def compose(self) -> ComposeResult:
-        yield Header()
-        with Vertical():
-            yield Button("Show Info Notification", id="info-btn")
-            yield Button("Show Warning Notification", id="warning-btn", variant="warning")
-            yield Button("Show Error Notification", id="error-btn", variant="error")
-            yield Button("Show Custom Notification", id="custom-btn", variant="primary")
-        yield Footer()
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle button presses."""
-        if event.button.id == "info-btn":
-            self.action_info_notification()
-        elif event.button.id == "warning-btn":
-            self.action_warning_notification()
-        elif event.button.id == "error-btn":
-            self.action_error_notification()
-        elif event.button.id == "custom-btn":
-            self.action_custom_notification()
-
-    def action_show_quit_message(self) -> None:
-        """Show notification when user tries to quit with Ctrl+C."""
-        self.notify(
-            "Use [b]Ctrl+Q[/b] to quit the application",
-            title="Wrong Key Combination",
-            severity="warning",
-            timeout=5
+        yield Vertical(
+            Static("Skyfield BSP downloader", id="title"),
+            ProgressBar(id="progress"),
+            Button("Start download", id="start"),
+            Static("", id="status"),
         )
 
-    def action_info_notification(self) -> None:
-        """Show an information notification."""
-        self.notify(
-            "This is a simple information message",
-            title="Information",
-            severity="information"
-        )
+    async def on_button_pressed(self, event) -> None:
+        if event.button.id == "start":
+            # start the threaded worker; exclusive=True ensures one at a time
+            self.run_worker(self._download_bsp, thread=True, exclusive=True)
 
-    def action_warning_notification(self) -> None:
-        """Show a warning notification."""
-        self.notify(
-            "Something might need your [b]attention[/b]!",
-            title="Warning",
-            severity="warning",
-            timeout=8
+    @work(thread=True, exclusive=True)
+    def _download_bsp(self, **kwargs) -> Path:
+        """Thread worker that downloads the file and updates the Textual ProgressBar."""
+        self.app.notify(
+            str(kwargs)
         )
+        filename = kwargs.get("filename", FILE_NAME)
+        prog = self.query_one("#progress", ProgressBar)
+        status = self.query_one("#status", Static)
 
-    def action_error_notification(self) -> None:
-        """Show an error notification with longer timeout."""
-        self.notify(
-            "An [b]error[/b] has occurred! Check the logs.",
-            title="Error",
-            severity="error",
-            timeout=10
-        )
+        # 1) figure out where Skyfield would fetch it, and local path
+        url = loader.build_url(filename)
+        local_path = Path(loader.path_to(filename))
 
-    def action_custom_notification(self) -> None:
-        """Show notification with Rich markup and no title."""
-        self.notify(
-            "[italic]You can use [b]Rich markup[/b] in notifications![/italic] "
-            "🎉 [green]Colors[/green], [yellow]styles[/yellow], and [blue]emojis[/blue] work too!",
-            title=""  # Empty title for no title bar
-        )
+        # make sure directory exists
+        local_path.parent.mkdir(parents=True, exist_ok=True)
 
+        # 2) stream download with requests
+        # If server provides Content-Length we can show absolute progress; otherwise show indeterminate.
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            total = r.headers.get("Content-Length")
+            if total is None:
+                # Indeterminate: set no total (Textual ProgressBar will show indeterminate)
+                total_bytes = None
+                self.call_from_thread(status.update, "Downloading (unknown size)...")
+                self.call_from_thread(prog.reset)  # enter indeterminate style
+            else:
+                total_bytes = int(total)
+                # ProgressBar expects total as integer
+                self.call_from_thread(prog.update, total=total_bytes, progress=0)
+                self.call_from_thread(status.update, f"Downloading {filename} ({total_bytes} bytes)...")
+
+            downloaded = 0
+            chunk_size = 32 * 1024  # 32 KiB
+            with open(local_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=chunk_size):
+                    if not chunk:
+                        continue
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    # update progress in UI thread
+                    if total_bytes is not None:
+                        # set exact value
+                        self.call_from_thread(prog.update, progress=downloaded)
+                    else:
+                        # for indeterminate, you can optionally show an updating counter
+                        self.call_from_thread(status.update, f"Downloaded {downloaded} bytes...")
+
+                    # check worker cancellation
+                    worker = get_current_worker()
+                    if worker is not None and worker.is_cancelled:
+                        # cleanup partial file and exit
+                        try:
+                            f.close()
+                            local_path.unlink(missing_ok=True)
+                        except Exception:
+                            pass
+                        self.call_from_thread(status.update, "Cancelled.")
+                        return Path()  # empty
+        # 3) Finished — ensure ProgressBar shows completion
+        if total_bytes is not None:
+            self.call_from_thread(prog.update, progress=total_bytes)
+        self.call_from_thread(status.update, f"Downloaded to {local_path}")
+        # Return the path (accessible as worker.result if needed)
+        return local_path
+
+    def on_worker_state_changed(self, event) -> None:
+        """Optional: log worker lifecycle changes"""
+        self.log(event)
 
 if __name__ == "__main__":
-    app = NotificationApp()
-    app.run()
+    DownloaderApp().run()

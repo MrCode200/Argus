@@ -6,10 +6,11 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import HorizontalGroup, VerticalGroup
 from textual.widgets import Footer, Header, Input, Label, Button, DataTable
+from textual.worker import Worker
 
 EXAMPLE_IMG_PATH: Path = Path("example.jpg")
 
-from src.app.screens import PromptEyesLocationScreen, FilteredFilePickerScreen
+from src.app.screens import PromptEyesLocationScreen, FilteredFilePickerScreen, EphemerisesDownloadScreen
 
 
 class ArgusApp(App):
@@ -61,10 +62,18 @@ class ArgusApp(App):
         )
 
     def download_ephemeris_file(self, file_name: str):
+        if not file_name:
+            return
+
         file_name = file_name.strip()
         if not file_name.endswith(".bsp"):
             file_name += ".bsp"
-        self.app.notify(f"Downloading ephemeris file {file_name}")
+        self.app.push_screen(
+            EphemerisesDownloadScreen(
+                file_name=file_name,
+                download_dir=Path("./ephemerises"),
+            ),
+        )
         # get active file picker screen and reload
 
     def handle_file_picker_result(self, result: Optional[Path] = None) -> None:

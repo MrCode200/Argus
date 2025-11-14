@@ -29,6 +29,10 @@ def get_relative_altazd(target_body: str, observer_latitude: float, observer_lon
         print(f"Altitude: {alt}, Azimuth: {az}, Distance: {d}")
         yield alt, az, d
 
+def download_ephemeris_file(bsp_file: str):
+    load(bsp_file)
+    return
+
 
 def return_available_planets(bsp_file: str) -> list[str]:
     planets = load(bsp_file)

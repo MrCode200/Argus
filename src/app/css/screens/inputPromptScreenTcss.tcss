@@ -1,27 +1,72 @@
+/* InputPromptScreen - Center dialog on screen */
 InputPromptScreen {
     align: center middle;
+    background: $background 70%;
 
-    Label {
+    /* Main dialog container */
+    VerticalGroup {
+        width: 65;
+        height: auto;
+        border: tall $primary 40%;
+        background: $surface;
+        padding: 2 4;
 
-    }
-
-    Input {
-
-    }
-
-    HorizontalGroup {
-        align: center middle;
-
-        Button {
-            margin: 0 5 0 5;
+        /* Title label styling */
+        Label {
+            width: 100%;
+            text-align: center;
+            text-style: bold underline;
+            padding-bottom: 2;
+            content-align: center middle;
         }
-        #submit_btn {
-            width: 1fr;
+
+        /* Input container */
+        #input_container {
+            width: 100%;
+            height: auto;
+            margin: 0 0 2 0;
+
+            /* Input field styling */
+            Input {
+                width: 100%;
+                background: grey 10%;
+                padding: 0 1;
+            }
+
+            Input:focus {
+                border: tall $primary;
+            }
         }
-        #cancel_btn {
-            width: 1fr;
+
+
+
+        /* Button container */
+        HorizontalGroup {
+            width: 100%;
+            height: auto;
+            align: center middle;
+
+            /* Button styling */
+            Button {
+                width: 1fr;
+                min-width: 14;
+                margin: 0 1;
+            }
+
+            #submit_btn {
+                min-width: 16;
+            }
+
+            #cancel_btn {
+                min-width: 16;
+            }
         }
     }
-
-
 }
+
+
+
+
+
+
+

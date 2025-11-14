@@ -35,6 +35,7 @@ class FilteredFilePickerScreen(ModalScreen[Path | None]):
 
     BINDINGS = [
         Binding("ctrl+c", "cancel", "Cancel", show=True, priority=True),
+        Binding("ctrl+a", "add", "Add", show=True, priority=True),
         Binding("ctrl+s", "select", "Select", show=True, priority=True),
         Binding("ctrl+f", "focus_search", "Search", show=True, priority=True),
     ]
@@ -80,8 +81,22 @@ class FilteredFilePickerScreen(ModalScreen[Path | None]):
         yield Footer()
 
     def on_mount(self) -> None:
-        """Focus search input when screen loads."""
+        """Focus search input when screen loads. And update bindings if add_file_callback is not None"""
         self.query_one("#search-input", Input).focus()
+        if self.add_file_callback:
+            for b in FilteredDirectoryTree.BINDINGS:
+                if b.key == "ctrl+a":
+                    b.show = True
+                    b.priority = True
+
+    def on_unmount(self):
+        if not self.add_file_callback:
+            return
+
+        for b in FilteredDirectoryTree.BINDINGS:
+            if b.key == "ctrl+a":
+                b.show = False
+                b.priority = False
 
     def on_input_changed(self):
         self.query_one("#dir-tree", FilteredDirectoryTree).set_search_query(self.query_one("#search-input", Input).value)
@@ -97,15 +112,18 @@ class FilteredFilePickerScreen(ModalScreen[Path | None]):
         if event.button.id == "select":
             self.action_select()
         elif event.button.id == "Add":
-            self.app.push_screen(
-                InputPromptScreen(
-                    title="EFD (Ephemeris File Downloader)",
-                    prompt="Enter ephemeris file name",
-                ),
-                callback=self.add_file_callback
-            )
+            self.action_add()
         elif event.button.id == "cancel":
             self.action_cancel()
+
+    def action_add(self):
+        self.app.push_screen(
+            InputPromptScreen(
+                title="EFD\n(Ephemeris File Downloader)",
+                prompt="Enter ephemeris file name",
+            ),
+            callback=self.add_file_callback
+        )
 
     def action_select(self) -> None:
         """Select the current path and close the modal."""
