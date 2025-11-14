@@ -1,0 +1,57 @@
+FilteredFilePickerScreen {
+    align: center middle;
+
+    #dialog {
+        width: auto;
+        max_width: 60;
+        height: auto;
+        border: tall pink 20%;
+        background: $surface;
+        padding: 1 2;
+
+        #title {
+            text-style: bold;
+            color: $text;
+            margin-bottom: 1;
+            text-align: center;
+            width: 100%;
+        }
+
+        #search-input {
+            margin-bottom: 1;
+            width: 100%;
+            background: grey 10%;
+        }
+
+        FilteredDirectoryTree {
+            height: auto;
+            min_height: 15;
+            padding: 1 2;
+            margin: 1 2;
+            background: grey 20%;
+        }
+
+        #status-bar {
+            margin-top: 1;
+            margin-bottom: 1;
+            text-align: center;
+            width: 100%;
+            text-style: reverse;
+        }
+
+        #button-container {
+            align: center middle;
+
+            Button {
+                width: auto;
+            }
+
+            #cancel {
+                margin: 0 1 0 0;
+            }
+            #select {
+                margin: 0 0 0 1;
+            }
+        }
+    }
+}

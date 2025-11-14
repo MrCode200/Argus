@@ -1,0 +1,38 @@
+PromptEyesLocationScreen {
+    align: center middle;
+
+    #dialog {
+        background: $surface;
+        width: 120;
+        height: auto;
+        padding: 2 4;
+        box-sizing: border-box;
+
+        border: tall $secondary;
+        border-title-color: $secondary;
+        border-title-align: center;
+        border-title-style: bold;
+    }
+    #prompt_lbl {
+        height: auto;
+        width: 100%;
+        content-align: left middle;
+        margin: 0 0 1 1;
+    }
+
+    .invalid_address {
+        color: red;
+        text-style: bold;
+    }
+
+    Input {
+        min_width: 20%;
+        width: auto;
+    }
+    #info_lbl {
+        color: grey 12%;
+        padding: 3 20 0 20;
+        text-align: center;
+        text-style: italic;
+    }
+}
