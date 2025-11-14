@@ -1,0 +1,17 @@
+Console:
+```
+"C:\Users\Navid\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\Scripts\textual.exe" console
+```
+Note:
+- Updates live (t)css files
+- using textual server main.py updates code live
+
+App --dev:
+```
+"C:\Users\Navid\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\Scripts\textual.exe" run --dev main.py
+```
+
+activate venv:
+```commandline
+.venv\Scripts\activate.bat
+```
