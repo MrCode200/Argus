@@ -37,7 +37,7 @@ STATUS_TEXT: dict[float, str] = {
     0.7: "⏳ Measuring expansion drift…",
     0.8: "☄️ Sampling comet-trail signatures…",
     0.9: "🪞 Detecting neutron-star ripples…",
-    1.00: "📦 Data capture complete.",
+    1.00: "✅ Download complete.",
 }
 
 class EphemerisesDownloadScreen(ModalScreen[Path | None]):
