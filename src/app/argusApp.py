@@ -6,7 +6,8 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import HorizontalGroup, VerticalGroup
 from textual.widgets import Footer, Header, Input, Label, Button, DataTable
-from textual.worker import Worker
+
+from src.app.screens.filteredFilePickerScreen import FilteredDirectoryTree
 
 EXAMPLE_IMG_PATH: Path = Path("example.jpg")
 
@@ -25,6 +26,7 @@ class ArgusApp(App):
         super().__init__()
         self.user_location: Optional[Location] = None
         self.ephemeris_file: Optional[Path] = None
+        self.target_body: Optional[str] = None
         self.debug_mode: bool = debug_mode
 
     def compose(self) -> ComposeResult:
@@ -73,13 +75,22 @@ class ArgusApp(App):
                 file_name=file_name,
                 download_dir=Path("./ephemerises"),
             ),
+            callback=self.reload_file_picker
         )
         # get active file picker screen and reload
 
-    def handle_file_picker_result(self, result: Optional[Path] = None) -> None:
-        if isinstance(result, Path):
-            self.ephemeris_file = result
-            self.app.notify(f"Selected ephemeris file: {result}")
+    def reload_file_picker(self, *args, **kwargs):
+        self.screen_stack[-1].query_one("#dir-tree", FilteredDirectoryTree).reload()
+
+    def handle_file_picker_result(self, result: dict[str, str | Path]) -> None:
+        ephemeris_file = result["path"]
+        target_body = result["target_body"]
+
+        if isinstance(ephemeris_file, Path):
+            self.ephemeris_file = ephemeris_file
+            self.target_body = target_body
+            self.app.notify(f"Selected ephemeris file: {ephemeris_file}\n"
+                            f"Target body: {target_body}")
 
     # --- Handles Location logic ---
     def action_change_address(self):

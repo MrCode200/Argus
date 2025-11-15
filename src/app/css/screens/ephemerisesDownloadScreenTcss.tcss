@@ -8,6 +8,7 @@ EphemerisesDownloadScreen {
         width: auto;
         padding: 1 2;
         border-title-color: $text;
+        border-title-background: $error 50%;
         border-title-align: center;
 
         ProgressBar {

@@ -34,6 +34,6 @@ def download_ephemeris_file(bsp_file: str):
     return
 
 
-def return_available_planets(bsp_file: str) -> list[str]:
+def available_planets(bsp_file: str) -> list[str]:
     planets = load(bsp_file)
     return list(planets.names().values())
