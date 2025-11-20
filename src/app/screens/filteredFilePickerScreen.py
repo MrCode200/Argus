@@ -83,7 +83,7 @@ class FilteredFilePickerScreen(ModalScreen[dict[str, str | Path] | None]):
 
                 with Container(id="radio_set_container"):
                     # Placeholder content when nothing selected
-                    yield Label("📂 Select a file to view options", id="placeholder_grid")
+                    yield Label(" 📂 Select a file to view options ", id="placeholder_grid")
                     # Actual RadioSet - hidden initially
                     with RadioSet(id="target_radio_set"):
                         pass
@@ -157,7 +157,7 @@ class FilteredFilePickerScreen(ModalScreen[dict[str, str | Path] | None]):
         self.app.push_screen(
             InputPromptScreen(
                 title="EFD\n(Ephemeris File Downloader)",
-                prompt="Enter ephemeris file name",
+                prompt="Enter ephemeris file name (e.g. de421.bsp)",
             ),
             callback=self.add_file_callback
         )

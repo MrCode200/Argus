@@ -1,19 +1,17 @@
 {
   "config-dev": {
-    "debug_mode": true,
+    "debug_mode": false,
     "skip_banner_animation": true,
     "skip_launch_code_prompt": true,
-    "display_image_container": false,
+    "display_image_container": true,
     "force_push_screens": false,
-    "auto_continue": true,
+    "use_test_location": true,
+    "test_location": "Argos Greece",
     "exit_on_worker_error": false
   },
-
-  "hidden-config" : {
-    "last_address": "Boltersener Str. 2",
-    "last_ephemeris_file": "D:\\MyFolders\\Code\\Argus\\ephemerises\\de421.bsp",
-    "last_celestial_body": "Moon"
-  },
+  "last_address": null,
+  "last_ephemeris_file": null,
+  "last_celestial_body": null,
 
   "display_tracking_data": true,
   "tracking_body_refresh_rate": 0.1,

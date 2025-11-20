@@ -5,7 +5,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, Label, Footer
 
 
-class ConfirmationScreen(ModalScreen):
+class ConfirmationScreen(ModalScreen[Button.Pressed]):
     """Screen with a dialog."""
     BINDINGS = [
         Binding("enter", "press_green_btn", "Submit", show=True, priority=True),

@@ -2,7 +2,7 @@ FilteredFilePickerScreen {
     align: center middle;
 
     #dialog {
-        width: auto;
+        width: 100;
         max-width: 110;
         align: center middle;
         offset: 15% 0%;

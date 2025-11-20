@@ -16,7 +16,7 @@ def split_text_to_console_lines(text: str, letter_width: int, text_max_chars: in
     Split `text` into lines suitable for printing with pyfiglet in a console.
 
     - `letter_width` is how many console columns one figlet character approximately occupies.
-      The maximum characters per line is computed as Console().width // letter_width.
+      The maximum characters per line is computed as Console().width / letter_width.
     - Long words that exceed the line width are split into chunks. Every chunk except the final
       one ends with '-' to indicate continuation.
     - Words that fit together (with a single space between them) are combined on the same line.

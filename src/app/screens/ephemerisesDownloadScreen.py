@@ -13,17 +13,19 @@ from textual.widgets import ProgressBar, Button, Label, Footer
 from textual.worker import Worker
 from textual.worker import WorkerState
 
+from config.settings import settings
+
 loader = Loader(".", verbose=False)
 
 # Galactic core gradient - from center outward to void (REVERSED)
 NEBULA_GRADIENT = Gradient(
-    (0.0, "#f6e6ff"),      # Brighter pale purple-white
-    (0.12, "#d79af6"),     # Brighter lavender
-    (0.25, "#b56af0"),     # More luminous bright purple
-    (0.4, "#8440d0"),      # Brighter violet
-    (0.6, "#4a46c2"),      # Brighter royal purple (vs darkslateblue)
-    (0.8, "#3a34a0"),      # Brightened deep purple
-    (1.0, "#101a80"),      # Brighter midnight blue
+    (0.0, "#f6e6ff"),  # Brighter pale purple-white
+    (0.12, "#d79af6"),  # Brighter lavender
+    (0.25, "#b56af0"),  # More luminous bright purple
+    (0.4, "#8440d0"),  # Brighter violet
+    (0.6, "#4a46c2"),  # Brighter royal purple (vs darkslateblue)
+    (0.8, "#3a34a0"),  # Brightened deep purple
+    (1.0, "#101a80"),  # Brighter midnight blue
     quality=1000
 )
 STATUS_TEXT: dict[float, str] = {
@@ -39,6 +41,7 @@ STATUS_TEXT: dict[float, str] = {
     0.9: "🪞 Detecting neutron-star ripples…",
     1.00: "✅ Download complete.",
 }
+
 
 class EphemerisesDownloadScreen(ModalScreen[Path | None]):
     CSS_PATH = "../css/screens/ephemerisesDownloadScreenTcss.tcss"
@@ -58,12 +61,11 @@ class EphemerisesDownloadScreen(ModalScreen[Path | None]):
             ProgressBar(id="progress", gradient=NEBULA_GRADIENT),
             Label("", id="status"),
             Button("[b]START DOWNLOAD[b]", id="start", variant="error"),
-            id = "vertical_group"
+            id="vertical_group"
         )
         vertical_group.border_title = "BSP Downloader"
         yield vertical_group
         yield Footer()
-
 
     def on_mount(self):
         self.query_one("#start").animate("opacity", value=0, duration=0)
@@ -80,7 +82,8 @@ class EphemerisesDownloadScreen(ModalScreen[Path | None]):
 
             if self._worker is not None:
                 self._worker.cancel()
-            self._worker = self.run_worker(self._download_bsp, thread=True, exclusive=True, exit_on_error=False)
+            self._worker = self.run_worker(self._download_bsp, thread=True, exclusive=True,
+                                           exit_on_error=settings.config_dev.get_value("exit_on_worker_error"))
 
             event.button.disabled = False
 
@@ -122,7 +125,7 @@ class EphemerisesDownloadScreen(ModalScreen[Path | None]):
                 self.app.call_from_thread(
                     status_widget.update,
                     f"{STATUS_TEXT[0]}\n"
-                    f"(0/{round(total_bytes*0.000001, 2)} bytes)"
+                    f"(0/{round(total_bytes * 0.000001, 2)} bytes)"
                 )
 
             with open(self.file_path, "wb") as f:
@@ -137,7 +140,7 @@ class EphemerisesDownloadScreen(ModalScreen[Path | None]):
                         self.app.call_from_thread(
                             status_widget.update,
                             f"{self.app.call_from_thread(self._get_status_text)}\n"
-                            f"({round(downloaded_bytes*0.000001, 2)}/{round(total_bytes*0.000001, 2)} MB)"
+                            f"({round(downloaded_bytes * 0.000001, 2)}/{round(total_bytes * 0.000001, 2)} MB)"
                         )
 
                     # Check if worker cancelled

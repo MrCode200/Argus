@@ -1,5 +1,55 @@
+#main_horizontal_group {
+    #stat-container {
+    }
+
+    #image-container {
+        border: ascii $primary;
+        background: black;
 
 
-Input {
-    width: 30%;
+        TabbedContent {
+             ImageDisplay {
+                width: auto;
+                height: auto;
+                offset: 0 -1;
+            }
+            Image {
+                offset: 0 1;
+                width: 100%;
+                height: auto;
+                max-width: 100%;
+            }
+            #compass-overlay-center-container {
+                width: 100%;
+                align: center middle;
+
+                #cardinal-directions-image {
+                    border: ascii red;
+                }
+                #red-cross-image {
+                    height: 5;
+                    width: 8;
+                    offset: 46 -27;
+                }
+            }
+        }
+
+        #celestial-body-center-container {
+            offset: -2 -55;
+            text-align: center;
+            width: 100%;
+        }
+        .pos_data_lbl {
+            offset: 0 -11;
+        }
+        &.celestial-tab-active {
+            #celestial-body-center-container {
+                offset: -2 -48;
+            }
+            .pos_data_lbl {
+                offset: 0 -4;
+            }
+        }
+    }
 }
+

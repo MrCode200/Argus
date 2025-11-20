@@ -1,3 +1,5 @@
+This Project is from the Beyond Team (1 person team🥲)
+
 Console:
 ```
 "C:\Users\Navid\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\Scripts\textual.exe" console
@@ -12,6 +14,8 @@ App --dev:
 ```
 
 activate venv:
-```commandline
+```
 .venv\Scripts\activate.bat
 ```
+
+GUIDE:
