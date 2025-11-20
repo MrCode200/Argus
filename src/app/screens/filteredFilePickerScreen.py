@@ -15,7 +15,6 @@ from src.locator import available_planets
 
 class FilteredDirectoryTree(DirectoryTree):
     """DirectoryTree with search filtering capability."""
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.search_query = ""

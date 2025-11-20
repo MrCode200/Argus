@@ -1,22 +1,28 @@
+from pathlib import Path
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.text import Text
 
-from src.banner import load_banner
-from src.app import ArgusApp
 from config.settings import settings
+from src.app import ArgusApp
+from src.banner import load_banner
 
 console = Console()
 
-#TODO: TUTORIAL on Textual
-#TODO: Banner adapt to terminal length
 TITLE: str = "PROJECT ARGUS"
 LAUNCH_CODE: str = "LAUNCH-ARGUS67"
 START_COLOR = (0, 255, 255)  # cyan
 END_COLOR = (255, 0, 255)  # magenta
 
+
 def main():
+    if Path("./ephemerises").mkdir(exist_ok=True):
+        console.print("Ephemerises directory created!", style="bold green")
+    if Path("./assets/interstellarObjectImages").mkdir(exist_ok=True):
+        console.print("Interstellar Object Images directory created!", style="bold green")
+
     load_banner(TITLE, START_COLOR, END_COLOR, "ansi_shadow", "diagonal",
                 (0.2 if not settings.config_dev.get_value("skip_banner_animation") else 0.0))
 
