@@ -5,7 +5,7 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.text import Text
 
-from config.settings import settings
+from config.config import settings
 from src.app import ArgusApp
 from src.banner import load_banner
 
@@ -24,9 +24,9 @@ def main():
         console.print("Interstellar Object Images directory created!", style="bold green")
 
     load_banner(TITLE, START_COLOR, END_COLOR, "ansi_shadow", "diagonal",
-                (0.2 if not settings.config_dev.get_value("skip_banner_animation") else 0.0))
+                (0.2 if not settings.dev.get_value("skip_banner_animation") else 0.0))
 
-    if not settings.config_dev.get_value("skip_launch_code_prompt"):
+    if not settings.dev.get_value("skip_launch_code_prompt"):
         console.print(Panel(
             "[pale_green1]:rocket: ARGUS LOADED SUCCESSFULLY[/pale_green1] \n" +
             f"Enter [bold blink yellow]{LAUNCH_CODE}[/bold blink yellow] to start the Project...",

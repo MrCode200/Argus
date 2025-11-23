@@ -3,21 +3,27 @@
     "debug_mode": true,
     "skip_banner_animation": true,
     "skip_launch_code_prompt": true,
-    "display_image_container": false,
+    "display_image_container": true,
     "force_push_screens": false,
     "auto_continue": true,
     "exit_on_worker_error": false
   },
-
-  "hidden-config" : {
-    "last_address": "Boltersener Str. 2",
-    "last_ephemeris_file": "D:\\MyFolders\\Code\\Argus\\ephemerises\\de421.bsp",
-    "last_celestial_body": "Moon"
+  "tracking": {
+    "display_data": false,
+    "refresh_rate": 0.1
   },
-
-  "display_tracking_data": true,
-  "tracking_body_refresh_rate": 0.1,
-
-  "altaz_units": "default",
-  "distance_units": "au"
+  "units": {
+    "azimuth": {
+      "unit": "degrees",
+      "decimals": 4
+    },
+    "altitude": {
+      "unit": "degrees",
+      "decimals": 4
+    },
+    "distance": {
+      "unit": "km",
+      "decimals": 4
+    }
+  }
 }

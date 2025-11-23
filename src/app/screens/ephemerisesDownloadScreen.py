@@ -13,7 +13,7 @@ from textual.widgets import ProgressBar, Button, Label, Footer
 from textual.worker import Worker
 from textual.worker import WorkerState
 
-from config.settings import settings
+from config.config import settings
 
 loader = Loader(".", verbose=False)
 
@@ -83,7 +83,7 @@ class EphemerisesDownloadScreen(ModalScreen[Path | None]):
             if self._worker is not None:
                 self._worker.cancel()
             self._worker = self.run_worker(self._download_bsp, thread=True, exclusive=True,
-                                           exit_on_error=settings.config_dev.get_value("exit_on_worker_error"))
+                                           exit_on_error=settings.dev.get_value("exit_on_worker_error"))
 
             event.button.disabled = False
 
