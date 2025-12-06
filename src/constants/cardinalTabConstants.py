@@ -13,10 +13,10 @@ class Point(NamedTuple):
     y: int
 
 class CardinalCoordinates(NamedTuple):
-    CENTER=Point(46, -27),
-    NORTH=Point(46, -47),
-    EAST=Point(86, -27),
-    SOUTH=Point(46, -7),
+    CENTER=Point(46, -27)
+    NORTH=Point(46, -47)
+    EAST=Point(86, -27)
+    SOUTH=Point(46, -7)
     WEST=Point(6, -27)
 
 CARDINAL_DIRECTIONS_COORDINATES = CardinalCoordinates()

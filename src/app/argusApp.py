@@ -15,25 +15,22 @@ from textual_image.widget import Image
 from config.config import settings, app_state
 from src.app.screens import PromptEyesLocationScreen, FilteredFilePickerScreen, EphemerisesDownloadScreen, \
     ConfirmationScreen
+from src.app.screens.dynamicConfigScreen import DynamicConfigScreen
 from src.app.screens.filteredFilePickerScreen import FilteredDirectoryTree
 from src.app.screens.promptEyesLocationScreen import geolocator
 from src.app.widgets import ImageDisplay
 from src.constants import AngleUnit, DistanceUnit, CARDINAL_DIRECTIONS_CIRCLE_PATH, RED_DOT_PATH, \
     CARDINAL_DIRECTIONS_COORDINATES
 from src.locator import get_relative_altazd
+from src.utils import format_delta
 
 # --- Constants ---
 EXAMPLE_IMAGE_PATH: Path = Path(".").parent.parent.joinpath("assets/interstellarObjectImages/example.jpg").resolve()
 
-
-# P(x, y)
-# TODO: update and use NamedTuple for coordinates
-
 # TODO: Every Base Screen should be interactable/callable from main screen (? is this good design?)
-## Tracking Display Settings
 # TODO: Add slider to time.now() + deltaTime
+## Tracking Display Settings
 # TODO: Toggleable If for altazd values should be calculated through average of n values or based on last value
-# TODO: Add option to display = False/true for TrackingDisplay altazd
 
 class ArgusApp(App):
     """
@@ -173,6 +170,22 @@ class ArgusApp(App):
             callback=self.handle_file_picker_result
         )
 
+    def action_open_config(self) -> None:
+        """Open the configuration screen."""
+        self.push_screen(
+            DynamicConfigScreen(
+                [settings.units, settings.tracking, settings.dev]
+            ),
+            callback=self.handle_config_result
+        )
+
+    def handle_config_result(self, result: dict[str, str | Path] | None) -> None:
+        """
+        Process configuration result and update application state.
+        """
+        self._load_unit_settings()
+        self.action_toggle_display_data(display=settings.tracking.display_data)
+
     def action_toggle_display_data(self, display: Optional[bool] = None) -> None:
         """
         Toggle or set the visibility of tracking data labels.
@@ -212,7 +225,7 @@ class ArgusApp(App):
 
         if event.button.id == "green_btn" and (last_ephemeris_file and last_celestial_body):
             self.handle_file_picker_result({
-                "path": Path(last_ephemeris_file),
+                "path": last_ephemeris_file,
                 "target_body": last_celestial_body
             })
 
@@ -411,9 +424,6 @@ class ArgusApp(App):
         Update tracking labels with current values and delta changes.
 
         Args:
-            altitude_lbl: Label widget for altitude display.
-            azimuth_lbl: Label widget for azimuth display.
-            distance_lbl: Label widget for distance display.
             alt: Current altitude angle.
             az: Current azimuth angle.
             d: Current distance.
@@ -431,9 +441,9 @@ class ArgusApp(App):
             old_az_val = self.az_unit.get_value(old_az)
             old_d_val = self.d_unit.get_value(old_d)
 
-            alt_delta = self._format_delta(alt_val - old_alt_val, self.alt_unit.symbol, self.alt_dec)
-            az_delta = self._format_delta(az_val - old_az_val, self.az_unit.symbol, self.az_dec)
-            d_delta = self._format_delta(d_val - old_d_val, self.d_unit.symbol, self.d_dec)
+            alt_delta = format_delta(alt_val - old_alt_val, self.alt_unit.symbol, self.alt_dec)
+            az_delta = format_delta(az_val - old_az_val, self.az_unit.symbol, self.az_dec)
+            d_delta = format_delta(d_val - old_d_val, self.d_unit.symbol, self.d_dec)
 
             altitude_lbl.update(
                 f"Altitude: {alt_val:.{self.alt_dec}f}{self.alt_unit.symbol} | {alt_delta} [dim]/{refresh_rate}s[/dim]")
@@ -490,25 +500,3 @@ class ArgusApp(App):
 
         self.query_one("#offset_x", Label).update(f"OFFSET_X: {offset_x}; OFFSET_Y: {offset_y} ")
         self.query_one("#offset_y", Label).update(f"dx: {dx}; dy: {dy} ")
-
-    # --- Utilities ---
-    # TODO: move to utilities file as its static
-    def _format_delta(self, change: float, symbol: str, decimal: int) -> str:
-        """
-        Format a delta value with color coding and directional arrow.
-
-        Args:
-            change: The change value to format.
-            symbol: Unit symbol to append.
-            decimal: Number of decimal places.
-
-        Returns:
-            Rich-formatted string with color (green for increase, red for decrease).
-        """
-        change = round(change, decimal)
-        if change > 0:
-            return f"[green]↑ +{change:.{decimal}f}{symbol}[/green]"
-        elif change < 0:
-            return f"[red]↓ {change:.{decimal}f}{symbol}[/red]"
-        else:
-            return f"[dim]→ 0{symbol}[/dim]"

@@ -9,7 +9,7 @@
     "exit_on_worker_error": false
   },
   "tracking": {
-    "display_data": false,
+    "display_data": true,
     "refresh_rate": 0.1
   },
   "units": {
@@ -22,7 +22,7 @@
       "decimals": 4
     },
     "distance": {
-      "unit": "km",
+      "unit": "au",
       "decimals": 4
     }
   }

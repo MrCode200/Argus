@@ -1,0 +1,91 @@
+DynamicConfigScreen {
+    align: center middle;
+    background: $surface 30%;
+
+    #container-main {
+        border: ascii $accent-lighten-2;
+        border-title-align: center;
+        border-title-background: $accent;
+        border-title-color: white;
+        border-title-style: bold;
+        background: $surface-darken-1;
+
+        height: 75%;
+        width: 50%;
+        max-width: 100;
+        min-height: 30;
+
+        layout: vertical;
+
+        /* Scrollable content area */
+        #config-scrollable-container {
+            height: 1fr;
+            width: 100%;
+            border: none;
+            border-title-color: $accent;
+            border-title-style: bold italic;
+            padding: 1 2;
+            background: $surface;
+
+            .section-container {
+                width: 100%;
+
+                border-title-color: $text-muted;
+
+                border: round $primary-lighten-2;
+                border-title-align: center;
+                border-title-style: bold italic;
+
+                margin: 0 0 1 0;
+
+                background: $panel 50%;
+
+                layout: grid;
+                grid-size: 2;
+                grid-columns: 1fr 1.5fr;
+                grid-gutter: 1 2;
+                grid-rows: auto;
+
+                /* Field labels */
+                .field-label {
+                    width: 100%;
+                    color: $text-muted;
+                    text-style: bold;
+                    content-align: left middle;
+                    padding: 0 1 0 0;
+                }
+                Select {
+                    width: 100%;
+                    max-width: 100%;
+                    min-width: 30;
+                }
+                Input {
+                    width: 100%;
+                    max-width: 50;
+                    min-width: 20;
+                }
+                Input:focus {
+                    border: tall $accent;
+                }
+            }
+            .section-container:hover {
+                border: round $accent;
+                background: $panel 70%;
+            }
+        }
+        /* Button container */
+        #horizontal-group-buttons {
+            height: auto;
+            width: 100%;
+            align: center middle;
+
+            padding: 1 2;
+            background: $panel-darken-1;
+
+            Button {
+                min-width: 16;
+                margin: 0 4;
+            }
+        }
+    }
+}
