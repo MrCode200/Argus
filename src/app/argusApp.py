@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import math
 from pathlib import Path
 from typing import Optional
@@ -7,8 +8,14 @@ from geopy import Location
 from skyfield.units import Angle, Distance
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import HorizontalGroup, VerticalGroup, Container, ScrollableContainer, Center
-from textual.widgets import Footer, Header, Label, Button, TabbedContent
+from textual.containers import (
+    HorizontalGroup, VerticalGroup, Container,
+    ScrollableContainer, Center
+)
+from textual.widgets import (
+    Footer, Header, Label, Button, TabbedContent,
+    Static, Rule, Digits, LoadingIndicator
+)
 from textual.worker import Worker, WorkerState
 from textual_image.widget import Image
 
@@ -21,11 +28,38 @@ from src.app.screens.promptEyesLocationScreen import geolocator
 from src.app.widgets import ImageDisplay
 from src.constants import AngleUnit, DistanceUnit, CARDINAL_DIRECTIONS_CIRCLE_PATH, RED_DOT_PATH, \
     CARDINAL_DIRECTIONS_COORDINATES
-from src.locator import get_relative_altazd
+from src.locator.astronomy import get_relative_altazd
 from src.utils import format_delta
 
 # --- Constants ---
 EXAMPLE_IMAGE_PATH: Path = Path(".").parent.parent.joinpath("assets/interstellarObjectImages/example.jpg").resolve()
+LOCATION_MAP_PATH: Path = Path(".").parent.parent.joinpath("assets/devImages/placeholder_map.png").resolve()
+logger = logging.getLogger("argus.app")
+
+class StatusIndicator(Static):
+    """A status indicator widget showing system state."""
+
+    def __init__(self, label: str, status: str = "inactive", **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.label_text = label
+        self.status = status
+
+    def compose(self) -> ComposeResult:
+        yield Label(f"● {self.label_text}", id=f"status_{self.id}")
+
+    def set_status(self, status: str) -> None:
+        """Update status: 'active', 'inactive', 'error', 'warning'"""
+        self.status = status
+        status_colors = {
+            "active": "green",
+            "inactive": "dim",
+            "error": "red",
+            "warning": "yellow"
+        }
+        color = status_colors.get(status, "dim")
+        label = self.query_one(Label)
+        label.update(f"[{color}]●[/] {self.label_text}")
+
 
 # TODO: Every Base Screen should be interactable/callable from main screen (? is this good design?)
 # TODO: Add slider to time.now() + deltaTime
@@ -46,18 +80,21 @@ class ArgusApp(App):
     BINDINGS = [
         Binding("ctrl+a", "change_address", "Change Address", show=True, priority=True),
         Binding("ctrl+b", "open_picker", "Open Picker", show=True),
-        Binding("ctrl+d", "toggle_display_data", "Toggle Display Data", show=True),
-        Binding("ctrl+s", "open_config", "config", show=True)
+        Binding("ctrl+d", "toggle_display_data", "Toggle Display", show=True),
+        Binding("ctrl+s", "open_config", "Config", show=True),
+        Binding("ctrl+r", "connect_device", "Connect Device", show=True)
     ]
 
     # --- Initialization ---
     def __init__(self):
         """Initialize the application with default state and load unit settings."""
+        logger.debug("Initializing ArgusApp...")
         super().__init__()
         self.user_location: Optional[Location] = None
         self.ephemeris_file: Optional[Path] = None
         self.celestial_body: Optional[str] = None
         self._worker: Optional[Worker] = None
+        self.device_connected: bool = False
 
         self._load_unit_settings()
 
@@ -69,19 +106,18 @@ class ArgusApp(App):
         self.az_dec = settings.units.azimuth.decimals
         self.d_unit = DistanceUnit.from_key(settings.units.distance.unit)
         self.d_dec = settings.units.distance.decimals
+        logger.debug(f"Loaded unit settings...")
 
     def compose(self) -> ComposeResult:
         """Compose the main application layout."""
         yield Header(True)
         with HorizontalGroup(id="main_horizontal_group"):
             with Container(id="stat-container"):
-                yield Button("Start", variant="error", id="start")
+                yield Button("[bold]▶[/bold] Start Tracking", variant="success", id="start")
                 with VerticalGroup():
                     yield Label("Address: ", id="address_lbl")
                     yield Label("Latitude: ", id="latitude_lbl")
                     yield Label("Longitude: ", id="longitude_lbl")
-                    yield Label("OFFSET_X: ", id="offset_x")
-                    yield Label("OFFSET_Y: ", id="offset_y")
 
             with Container(id="image-container"):
                 with TabbedContent("Cardinal Directions", "Celestial Body"):
@@ -98,16 +134,34 @@ class ArgusApp(App):
                         )
                     with ScrollableContainer(id="celestial-body-image-scroll-container"):
                         yield Image(EXAMPLE_IMAGE_PATH, id="celestial-body-image")
+
                 with Center(id="celestial-body-center-container"):
                     yield Label("Celestial Body: ", id="celestial-body-lbl", variant="accent")
-                yield Label("Altitude: ", id="altitude_lbl", variant="primary", classes="pos_data_lbl")
-                yield Label("Azimuth: ", id="azimuth_lbl", variant="primary", classes="pos_data_lbl")
-                yield Label("Distance: ", id="distance_lbl", variant="secondary", classes="pos_data_lbl")
+
+                yield Label(
+                    "[b]Altitude:[/b] [dim]Waiting...[/dim]",
+                    id="altitude_lbl",
+                    variant="primary",
+                    classes="pos_data_lbl"
+                )
+                yield Label(
+                    "[b]Azimuth:[/b] [dim]Waiting...[/dim]",
+                    id="azimuth_lbl",
+                    variant="primary",
+                    classes="pos_data_lbl"
+                )
+                yield Label(
+                    "[b]Distance:[/b] [dim]Waiting...[/dim]",
+                    id="distance_lbl",
+                    variant="secondary",
+                    classes="pos_data_lbl"
+                )
 
         yield Footer()
 
     def on_mount(self) -> None:
         """Initialize application state after mounting."""
+        logger.info("Mounting ArgusApp")
         self.theme = "flexoki"
         self.title = "ARGUS"
 
@@ -130,9 +184,16 @@ class ArgusApp(App):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press events."""
         event.stop()
+        logger.debug(f"Button pressed: {event.button.id}")
 
         if event.button.id == "start":
             self._handle_start_button()
+        elif event.button.id == "connect_device":
+            self.action_connect_device()
+        elif event.button.id == "set_location":
+            self.action_change_address()
+        elif event.button.id == "select_target":
+            self.action_open_picker()
 
     def on_tabbed_content_tab_activated(self, event: TabbedContent.TabActivated) -> None:
         """Handle tab switching to update CSS classes for layout adjustments."""
@@ -145,13 +206,15 @@ class ArgusApp(App):
 
     def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
         """Handle worker state changes and reset compass on cancellation or error."""
-        match event.state:
-            case WorkerState.CANCELLED:
-                self.notify("AltAz calculation cancelled.", severity="information")
-            case WorkerState.ERROR:
-                self.notify(f"AltAz calculation failed.\nError: {event.worker.error}", severity="error")
-            case _:
-                return
+        if event.state == WorkerState.CANCELLED:
+            logger.warning("AltAz calculation was cancelled")
+            self.notify("AltAz calculation cancelled.", severity="information")
+        elif event.state == WorkerState.ERROR:
+            error_msg = f"AltAz calculation failed: {event.worker.error}"
+            logger.error(error_msg, exc_info=event.worker.error)
+            self.notify(f"AltAz calculation failed.\nError: {event.worker.error}", severity="error")
+        else:
+            return
 
         self.query_one("#red-cross-image", ImageDisplay).offset = CARDINAL_DIRECTIONS_COORDINATES.CENTER
 
@@ -174,7 +237,7 @@ class ArgusApp(App):
         """Open the configuration screen."""
         self.push_screen(
             DynamicConfigScreen(
-                [settings.units, settings.tracking, settings.dev]
+                [settings.units, settings.tracking, settings.env, settings.dev]
             ),
             callback=self.handle_config_result
         )
@@ -183,6 +246,7 @@ class ArgusApp(App):
         """
         Process configuration result and update application state.
         """
+        logger.debug("Processing and Reloading Config...")
         self._load_unit_settings()
         self.action_toggle_display_data(display=settings.tracking.display_data)
 
@@ -210,6 +274,9 @@ class ArgusApp(App):
         self.query_one("#azimuth_lbl", Label).display = display
         self.query_one("#distance_lbl", Label).display = display
 
+    def action_connect_device(self):
+        self.device_connected = not self.device_connected
+
     # --- Session Management ---
     def continue_from_last_session(self, event: Button.Pressed) -> None:
         """
@@ -224,6 +291,8 @@ class ArgusApp(App):
         last_address = app_state.last_address
 
         if event.button.id == "green_btn" and (last_ephemeris_file and last_celestial_body):
+            logger.debug(
+                f"Continuing from last session: Ephemeris File: {last_ephemeris_file}, Celestial Body: {last_celestial_body}")
             self.handle_file_picker_result({
                 "path": last_ephemeris_file,
                 "target_body": last_celestial_body
@@ -235,6 +304,7 @@ class ArgusApp(App):
         ):
             self.push_screen(PromptEyesLocationScreen())
         elif last_address is not None and event.button.id == "green_btn":
+            logger.debug(f"Continuing from last session: Address: {last_address}")
             self.handle_location_result(geolocator.geocode(last_address))
 
     # --- Location Handling ---
@@ -246,8 +316,10 @@ class ArgusApp(App):
             result: Geopy Location object or None if selection was cancelled.
         """
         if not isinstance(result, Location):
+            logger.warning("Location selection was cancelled or invalid")
             return
 
+        logger.info(f"Location set to: {result.address} (Lat: {result.latitude}, Lon: {result.longitude})")
         self.user_location = result
         app_state.last_address = result.address
         app_state.save()
@@ -294,26 +366,41 @@ class ArgusApp(App):
             return
 
         if self._worker is not None and self._worker.is_running:
+            logger.info("Cancelling existing worker due to new file selection")
             self._worker.cancel()
-            self.query_one("#altitude_lbl", Label).update("Altitude: ")
-            self.query_one("#azimuth_lbl", Label).update("Azimuth: ")
-            self.query_one("#distance_lbl", Label).update("Distance: ")
+            self._worker = None
+
+            self.query_one("#altitude_lbl", Label).update(
+                "[b]Altitude:[/b] [dim]Waiting...[/dim]"
+            )
+            self.query_one("#azimuth_lbl", Label).update(
+                "[b]Azimuth:[/b] [dim]Waiting...[/dim]"
+            )
+            self.query_one("#distance_lbl", Label).update(
+                "[b]Distance:[/b] [dim]Waiting...[/dim]"
+            )
+
+            self.query_one("#start", Button).label = "[bold]▶ [/bold] Start Tracking"
+            self.query_one("#start", Button).variant = "success"
 
         ephemeris_file = result["path"]
         celestial_body = result["target_body"]
 
         if isinstance(ephemeris_file, Path):
+            logger.info(f"Selected ephemeris file: {ephemeris_file} for celestial body: {celestial_body}")
             self.ephemeris_file = ephemeris_file
             self.celestial_body = celestial_body
 
             app_state.last_ephemeris_file = ephemeris_file
             app_state.last_celestial_body = celestial_body
-
             app_state.save()
 
-            self.query_one("#celestial-body-lbl", Label).update(f" Celestial Body: {celestial_body} ")
-            self.app.notify(f"Selected ephemeris file: {ephemeris_file}\n"
-                            f" Celestial body: {celestial_body} ")
+            self.query_one("#celestial-body-lbl", Label).update(f" Celestial Body: [b]{celestial_body.upper()}[/b] ")
+            self.app.notify(
+                f"Selected ephemeris file: {ephemeris_file}\n"
+                f"✓ Target configured: {celestial_body} ",
+                severity="information"
+            )
 
     # --- Tracking Display ---
     def toggle_display_tracking_data(self) -> None:
@@ -338,22 +425,40 @@ class ArgusApp(App):
     def _handle_start_button(self) -> None:
         """
         Validate requirements and start the celestial body tracking worker.
-
-        Checks for location, ephemeris file, and celestial body selection
-        before starting the background tracking task.
         """
         if self._worker is not None and self._worker.is_running:
+            logger.debug("Worker is already running, stopping it")
+            self._worker.cancel()
+            self._worker = None
+            self.query_one("#start", Button).label = "[bold]▶[/bold] Start Tracking"
+            self.query_one("#start", Button).variant = "success"
             return
+        else:
+            self.query_one("#start", Button).label = "[bold]⏸ [/bold] Stop Tracking"
+            self.query_one("#start", Button).variant = "error"
 
         if self.user_location is None or self.ephemeris_file is None or self.celestial_body is None:
+            error_msg = "Missing required selections"
+            logger.warning(error_msg)
+
+            # Highlight what's missing
+            missing = []
+            if self.user_location is None:
+                missing.append("location")
+            if self.ephemeris_file is None or self.celestial_body is None:
+                missing.append("target")
+
             self.app.notify(
-                "Please select a location, ephemeris file, and celestial body (￢︿̫̿￢☆).",
-                severity="error"
+                f"⚠ Please configure: {', '.join(missing)} (￣ε(#￣)",
+                severity="warning",
+                timeout=5
             )
             return
 
         full_ephemeris_path = self.ephemeris_file.parent / self.DEFAULT_FULL_EPHEMERIS_FILE
         if not full_ephemeris_path.exists():
+            error_msg = f"Missing full ephemeris file: {full_ephemeris_path}"
+            logger.error(error_msg)
             self.app.notify(
                 f"Missing full ephemeris file (￣ε(#￣)☆╰╮o(￣皿￣///).\n"
                 f"Download {self.DEFAULT_FULL_EPHEMERIS_FILE}!",
@@ -361,6 +466,7 @@ class ArgusApp(App):
             )
             return
 
+        logger.info(f"Starting tracking worker for {self.celestial_body} at {self.user_location}")
         self._worker = self.run_worker(
             self._get_altazd,
             exclusive=True,
@@ -371,12 +477,8 @@ class ArgusApp(App):
     async def _get_altazd(self, refresh_rate: float = 0.1) -> None:
         """
         Continuously calculate and update altitude, azimuth, and distance.
-
-        Runs in a background worker, updating the UI at the specified refresh rate.
-
-        Args:
-            refresh_rate: Update interval in seconds.
         """
+        logger.debug(f"Starting alt/az/distance calculation with refresh rate: {refresh_rate}s")
         altitude_lbl = self.query_one("#altitude_lbl", Label)
         azimuth_lbl = self.query_one("#azimuth_lbl", Label)
         distance_lbl = self.query_one("#distance_lbl", Label)
@@ -388,30 +490,35 @@ class ArgusApp(App):
         full_bsp = str(self.ephemeris_file.parent / self.DEFAULT_FULL_EPHEMERIS_FILE)
         target_bsp = str(self.ephemeris_file)
 
-        while True:
-            if self._worker is not None and self._worker.is_cancelled:
-                return
+        try:
+            while True:
+                if self._worker is not None and self._worker.is_cancelled:
+                    logger.debug("Worker received cancellation signal")
+                    return
 
-            alt, az, d = await asyncio.to_thread(
-                get_relative_altazd,
-                self.celestial_body,
-                self.user_location.latitude,
-                self.user_location.longitude,
-                full_bsp_file=full_bsp,
-                target_bsp_file=target_bsp
-            )
+                alt, az, d = await asyncio.to_thread(
+                    get_relative_altazd,
+                    self.celestial_body,
+                    self.user_location.latitude,
+                    self.user_location.longitude,
+                    full_bsp_file=full_bsp,
+                    target_bsp_file=target_bsp
+                )
 
-            self._update_tracking_labels(
-                altitude_lbl, azimuth_lbl, distance_lbl,
-                alt, az, d,
-                old_alt, old_az, old_d,
-                refresh_rate
-            )
+                self._update_tracking_labels(
+                    altitude_lbl, azimuth_lbl, distance_lbl,
+                    alt, az, d,
+                    old_alt, old_az, old_d,
+                    refresh_rate
+                )
 
-            old_alt, old_az, old_d = alt, az, d
-            self._update_compass(alt, az)
+                old_alt, old_az, old_d = alt, az, d
+                self._update_compass(alt, az)
 
-            await asyncio.sleep(refresh_rate)
+                await asyncio.sleep(refresh_rate)
+        except Exception as e:
+            logger.error("Error in _get_altazd worker", exc_info=e)
+            raise
 
     def _update_tracking_labels(
             self,
@@ -446,14 +553,27 @@ class ArgusApp(App):
             d_delta = format_delta(d_val - old_d_val, self.d_unit.symbol, self.d_dec)
 
             altitude_lbl.update(
-                f"Altitude: {alt_val:.{self.alt_dec}f}{self.alt_unit.symbol} | {alt_delta} [dim]/{refresh_rate}s[/dim]")
+                f"[b]Altitude:[/b] {alt_val:.{self.alt_dec}f}{self.alt_unit.symbol} "
+                f"[dim]│[/dim] {alt_delta} [dim]/{refresh_rate}s[/dim]"
+            )
             azimuth_lbl.update(
-                f"Azimuth: {az_val:.{self.az_dec}f}{self.az_unit.symbol} | {az_delta} [dim]/{refresh_rate}s[/dim]")
-            distance_lbl.update(f"Distance: {d_val:.{self.d_dec}f} | {d_delta} [dim]/{refresh_rate}s[/dim]")
+                f"[b]Azimuth:[/b] {az_val:.{self.az_dec}f}{self.az_unit.symbol} "
+                f"[dim]│[/dim] {az_delta} [dim]/{refresh_rate}s[/dim]"
+            )
+            distance_lbl.update(
+                f"[b]Distance:[/b] {d_val:.{self.d_dec}f} {self.d_unit.symbol} "
+                f"[dim]│[/dim] {d_delta} [dim]/{refresh_rate}s[/dim]"
+            )
         else:
-            altitude_lbl.update(f"Altitude: {alt_val:.4f}{self.alt_unit.symbol} | [dim]—[/dim]")
-            azimuth_lbl.update(f"Azimuth: {az_val:.4f}{self.az_unit.symbol} | [dim]—[/dim]")
-            distance_lbl.update(f"Distance: {d_val:.4f}{self.d_unit.symbol} | [dim]—[/dim]")
+            altitude_lbl.update(
+                f"[b]Altitude:[/b] {alt_val:.{self.alt_dec}f}{self.alt_unit.symbol} [dim]│ —[/dim]"
+            )
+            azimuth_lbl.update(
+                f"[b]Azimuth:[/b] {az_val:.{self.az_dec}f}{self.az_unit.symbol} [dim]│ —[/dim]"
+            )
+            distance_lbl.update(
+                f"[b]Distance:[/b] {d_val:.{self.d_dec}f} {self.d_unit.symbol} [dim]│ —[/dim]"
+            )
 
     def _update_compass(self, alt: Angle, az: Angle) -> None:
         """
@@ -497,6 +617,3 @@ class ArgusApp(App):
         offset_x = cx + dx
         offset_y = cy - dy  # Subtract because screen y is inverted
         self.query_one("#red-cross-image", ImageDisplay).offset = (offset_x, offset_y)
-
-        self.query_one("#offset_x", Label).update(f"OFFSET_X: {offset_x}; OFFSET_Y: {offset_y} ")
-        self.query_one("#offset_y", Label).update(f"dx: {dx}; dy: {dy} ")

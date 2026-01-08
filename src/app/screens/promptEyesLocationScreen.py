@@ -1,5 +1,7 @@
 import time
+from pathlib import Path
 from typing import Optional
+import logging
 
 from geopy import Location
 from geopy.exc import GeocoderUnavailable, GeocoderTimedOut
@@ -11,9 +13,21 @@ from textual.containers import HorizontalGroup, Center
 from textual.screen import ModalScreen
 from textual.widgets import Input, Button, Footer, Label
 
+from config.config import settings
 from src.app.screens.confirmationScreen import ConfirmationScreen
+from src.app.utils.locationImageManager import LocationImageManager
+from src.locator.mapping import generate_map
 
 geolocator = Nominatim(user_agent="Argus")
+
+MAP_IMG_DIR: Path = Path(".").parent.parent.joinpath("assets/locationImages/")
+location_image_manager = LocationImageManager(
+    5,
+    MAP_IMG_DIR,
+    load_existing_images=True,
+    blacklist=["placeholder_map.png"],
+    logger=logging.getLogger("argus.app")
+)
 
 INFO_TEXT: str = """
 Trust me you don't need to read this...
@@ -43,7 +57,7 @@ class PromptEyesLocationScreen(ModalScreen):
                     placeholder="ex. Whip-Ma-Whop-Ma-Gate Str. 67 New York",
                     tooltip="A detailed address increases the accuracy of the locator to locate your position. (╭ರ_•́)︎"
                 ),
-                Button("Submit", variant="success")
+                Button("Submit", variant="success"),
             ),
             Label(INFO_TEXT, id="info_lbl"),
             id="dialog"
@@ -80,11 +94,26 @@ class PromptEyesLocationScreen(ModalScreen):
             prompt_lbl.remove_class("invalid_address")
             prompt_lbl.update("Enter the EYEs address: ( •̀ ω •́ )✧")
 
+        # Location Image Logic
+        data = generate_map(
+            api_key=settings.env.LOCATIONIQ_API_KEY,
+            lat=self.user_location.latitude,
+            lon=self.user_location.longitude,
+            markers=[(self.user_location.latitude, self.user_location.longitude)],
+        )
+        image_name = f"lat_{self.user_location.latitude}_lon_{self.user_location.longitude}.png"
+        location_image_manager.save_image(
+            image_name=f"lat_{self.user_location.latitude}_lon_{self.user_location.longitude}.png",
+            data=data
+        )
+
         self.app.push_screen(
             ConfirmationScreen(
-                f"Is the EYE located at: \n\n{self.user_location}?",
-                "Yes",
-                "No",
+                title=f"Is the EYE located at:",
+                prompt=f"{self.user_location}",
+                green_btn_lbl="Yes",
+                red_btn_lbl="No",
+                image_path=MAP_IMG_DIR/image_name
             ),
             callback=self.set_location
         )

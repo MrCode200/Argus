@@ -97,4 +97,4 @@ def available_planets(bsp_file: str) -> list[str]:
 
 
 if __name__ == '__main__':
-    print(available_planets("../ephemerises/jup365.bsp")[0][2])
+    print(available_planets("../../ephemerises/jup365.bsp")[0][2])

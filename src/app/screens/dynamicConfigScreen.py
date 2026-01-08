@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import TypeVar, get_origin, Literal
 
@@ -9,6 +10,8 @@ from textual.screen import ModalScreen
 from textual.widgets import Label, Checkbox, Switch, Select, Input, Button
 
 from config.config import ConfigFieldMeta, get_config_fields, settings
+
+logger = logging.getLogger("argus.app")
 
 T = TypeVar('T')
 
@@ -60,6 +63,9 @@ class DynamicConfigScreen(ModalScreen):
                                 elif field.is_choice:
                                     yield Select.from_values(field.choices, id=f"field-select-{field.pathed_name}",
                                                              value=field.value)
+                                elif field.is_str:
+                                    yield Input(str(field.value), id=f"field-input-{field.pathed_name}", type="text",
+                                                tooltip=field.description)
 
             with HorizontalGroup(id="horizontal-group-buttons"):
                 yield Button("Save", id="save-button", variant="success")
@@ -92,12 +98,13 @@ class DynamicConfigScreen(ModalScreen):
     def get_widget_name(field_meta: ConfigFieldMeta) -> str:
         if field_meta.is_bool:
             return "checkbox"
-        elif field_meta.is_int:
-            return "input"
-        elif field_meta.is_float:
+        elif (field_meta.is_int or
+              field_meta.is_float or
+              field_meta.is_str):
             return "input"
         elif field_meta.is_choice:
             return "select"
+
 
     def action_save(self, _recall_on_error: bool = True):
         previous_state = self.config_models.copy()
@@ -133,11 +140,14 @@ class DynamicConfigScreen(ModalScreen):
                 self.action_save(_recall_on_error=False)
 
         # ---------------
-        # Entangled to the config.py code!
+        # Entangled to the config.py code! :'((
         # ---------------
-        settings.save()
-
-        self.notify("Config Saved")
+        try:
+            settings.save()
+            self.notify("Config Saved")
+        except Exception as e:
+            self.notify(f"Failed to save config: {e}", severity="error")
+            logger.error(f"Failed to save config: {e}")
 
     def action_reset(self):
         for section in self.query(".section-container"):

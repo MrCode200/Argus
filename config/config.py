@@ -62,6 +62,10 @@ class ConfigFieldMeta:
         return self.choices is not None
 
     @property
+    def is_str(self) -> bool:
+        return self.field_type is str
+
+    @property
     def is_nested_model(self) -> bool:
         """Check if this field is a nested BaseModel."""
         try:
@@ -156,14 +160,44 @@ class UnitsConfig(BaseModel):
     altitude: AngleUnitConfig = Field(default_factory=AngleUnitConfig)
     distance: DistanceUnitConfig = Field(default_factory=DistanceUnitConfig)
 
+# --- Env Settings ---
+class EnvSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=Path("../.env").resolve(),
+        env_file_encoding="utf-8",
+        extra="forbid",
+        validate_assignment=True,
+        validate_default=True,
+    )
+
+    LOCATIONIQ_API_KEY: str = Field(description="LocationIQ API key", alias="LOCATIONIQ_API_KEY")
+
+    @classmethod
+    def settings_customise_sources(
+            cls,
+            settings_cls: type[BaseSettings],
+            init_settings: PydanticBaseSettingsSource,
+            env_settings: PydanticBaseSettingsSource,
+            dotenv_settings: PydanticBaseSettingsSource,
+            file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            init_settings,  # values passed programmatically
+            dotenv_settings,  # .env file (APPLIES TO NESTED MODELS)
+            env_settings,  # OS env vars override .env
+        )
 
 # --- Main Settings ---
 class Settings(BaseSettings):
     dev: DevConfig = Field(default_factory=DevConfig, alias="config-dev")
     tracking: TrackingConfig = Field(default_factory=TrackingConfig)
     units: UnitsConfig = Field(default_factory=UnitsConfig)
+    env: EnvSettings = Field(default_factory=EnvSettings)
 
     model_config = SettingsConfigDict(
+        env_file=Path("../.env").resolve(),
+        env_file_encoding="utf-8",
+        env_nested_delimiter="__",
         json_file=str(CONFIG_FILE),
         json_file_encoding="utf-8",
         extra="forbid",
@@ -180,7 +214,9 @@ class Settings(BaseSettings):
             dotenv_settings: PydanticBaseSettingsSource,
             file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
-        return (JsonConfigSettingsSource(settings_cls),)
+        return (
+            JsonConfigSettingsSource(settings_cls),  # last priority file
+        )
 
     def save(self) -> None:
         """Save settings to config.json."""
@@ -231,3 +267,6 @@ class AppState(BaseModel):
 # --- Global Instances ---
 settings = Settings()
 app_state = AppState.load()
+
+if __name__ == '__main__':
+    print(settings.env.LOCATIONIQ_API_KEY)

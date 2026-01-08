@@ -29,6 +29,7 @@ DynamicConfigScreen {
 
             .section-container {
                 width: 100%;
+                min-height: 6;
 
                 border-title-color: $text-muted;
 

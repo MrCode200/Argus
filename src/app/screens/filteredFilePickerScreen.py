@@ -10,7 +10,7 @@ from textual.suggester import SuggestFromList
 from textual.widgets import DirectoryTree, Button, Footer, Label, Input, RadioSet, RadioButton
 
 from src.app.screens.inputPromptScreen import InputPromptScreen
-from src.locator import available_planets
+from src.locator.astronomy import available_planets
 
 
 class FilteredDirectoryTree(DirectoryTree):
