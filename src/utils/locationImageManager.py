@@ -52,11 +52,11 @@ class LocationImageManager:
                         f"{num_valid_images} images detected."
                     )
 
-                self.logger.info(f"Loading existing image {image.name}. Limit: {self.format_limit_display()}")
+                self.logger.debug(f"Loading existing image {image.name}. Limit: {self.format_limit_display()}")
                 self.image_history.append(image.name)
 
     def format_limit_display(self):
-        return f"{self.image_history.maxlen}/{len(self.image_history)}"
+        return f"{len(self.image_history)}/{self.image_history.maxlen}"
 
     def save_image(self, image_name: str, data: bytes):
         """
@@ -76,7 +76,7 @@ class LocationImageManager:
         if len(self.image_history) == self.image_history.maxlen:
             oldest = self.image_history[0]
             try:
-                self.logger.info(f"Limit reached ({self.format_limit_display()}). Removing oldest image {oldest}")
+                self.logger.debug(f"Limit reached ({self.format_limit_display()}). Removing oldest image {oldest}")
                 os.remove(self.image_dir / oldest)
             except FileNotFoundError:
                 pass
@@ -100,7 +100,7 @@ class LocationImageManager:
 
             if image_name in self.image_history:
                 self.image_history.remove(image_name)
-            self.logger.info(f"Deleted image {image_name}. Limit: {self.format_limit_display()}")
+            self.logger.debug(f"Deleted image {image_name}. Limit: {self.format_limit_display()}")
         except FileNotFoundError:
             pass
 
@@ -110,11 +110,11 @@ class LocationImageManager:
         """
         for image in self.image_history:
             if image in self.blacklist:
-                self.logger.info(f"Image {image} is blacklisted. Skipping.")
+                self.logger.debug(f"Image {image} is blacklisted. Skipping.")
                 continue
 
             try:
-                self.logger.info(f"Deleting image {image}")
+                self.logger.debug(f"Deleting image {image}")
                 os.remove(self.image_dir / image)
             except FileNotFoundError:
                 pass

@@ -1,0 +1,1 @@
+from .envValidation import validate_locationiq_key

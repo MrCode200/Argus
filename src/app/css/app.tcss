@@ -1,5 +1,76 @@
 #main_horizontal_group {
     #stat-container {
+        .info-label {
+            width: 100;
+            text-wrap: wrap;
+        }
+        .solid-box {
+            width: 95%;
+            height: auto;
+            padding: 1 1;
+            background: $panel 100%;
+        }
+        .container-menu-6x6 {
+            height: auto;
+            width: 100%;
+            padding: 0 0 1 5;
+            layout: grid;
+            grid-size: 3 2;
+        }
+        Collapsible {
+            margin: 0 2;
+        }
+
+        #container-dock {
+            dock: top;
+            height: auto;
+            width: 100%;
+            background: $surface 100%;
+            border: tall $accent;
+            margin: 1 1 0 1;
+
+            #menu-title {
+                offset-x: 80%;
+                width: 40%;
+                text-align: center;
+                text-style: bold underline;
+                background: $accent 12%;
+                color: white;
+                padding: 1 0 1 0;
+            }
+
+            StatusIndicator {
+                padding-top: 1;
+            }
+        }
+
+        #menu-container {
+            Button {
+                min-width: 25;
+                margin-top: 1;
+                min-height: 4;
+            }
+        }
+
+        #location-collapsible {
+            #map-preview-container {
+                margin-left: 14;
+                border: round $primary 40%;
+                height: 20;
+                width: 62;
+            }
+            #address_lbl {
+                margin-bottom: 1;
+            }
+        }
+
+        #log-collapsible{
+            #richlog-logger {
+                background: $surface 100%;
+                height: auto;
+                max-height: 15;
+            }
+        }
     }
 
     #image-container {
@@ -24,7 +95,7 @@
                 align: center middle;
 
                 #cardinal-directions-image {
-                    border: ascii red;
+                    border: ascii black;
                 }
                 #red-cross-image {
                     height: 5;

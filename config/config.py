@@ -1,8 +1,10 @@
 import json
 from typing import Literal, Optional, Any, get_origin, get_args
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, JsonConfigSettingsSource, PydanticBaseSettingsSource
+
+from src.validation import validate_locationiq_key
 
 # --- Constants ---
 CONFIG_DIR = Path(__file__).parent
@@ -170,7 +172,17 @@ class EnvSettings(BaseSettings):
         validate_default=True,
     )
 
-    LOCATIONIQ_API_KEY: str = Field(description="LocationIQ API key", alias="LOCATIONIQ_API_KEY")
+    LOCATIONIQ_API_KEY: str = Field(
+        description="LocationIQ API key",
+        min_length=32,
+    )
+
+    @classmethod
+    @field_validator('LOCATIONIQ_API_KEY', mode='after') # TODO: doesn't validate env var
+    def validate_locationiq_api_key(cls, v):
+        if not validate_locationiq_key(v):
+            raise ValueError("Invalid LocationIQ API key")
+        return v
 
     @classmethod
     def settings_customise_sources(
@@ -200,7 +212,7 @@ class Settings(BaseSettings):
         env_nested_delimiter="__",
         json_file=str(CONFIG_FILE),
         json_file_encoding="utf-8",
-        extra="forbid",
+        extra='forbid',
         validate_assignment=True,
         validate_default=True,
     )
@@ -215,14 +227,14 @@ class Settings(BaseSettings):
             file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         return (
-            JsonConfigSettingsSource(settings_cls),  # last priority file
+            JsonConfigSettingsSource(settings_cls),  # lowest priority
         )
 
     def save(self) -> None:
         """Save settings to config.json."""
         CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-            f.write(self.model_dump_json(by_alias=True, indent=2))
+            f.write(self.model_dump_json(by_alias=True, indent=2, exclude={"env": ...}))
 
     def reset(self) -> None:
         """Reset all settings to defaults."""

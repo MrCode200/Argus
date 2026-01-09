@@ -10,6 +10,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Label, Checkbox, Switch, Select, Input, Button
 
 from config.config import ConfigFieldMeta, get_config_fields, settings
+from src.validation import validate_locationiq_key
 
 logger = logging.getLogger("argus.app")
 
@@ -142,6 +143,10 @@ class DynamicConfigScreen(ModalScreen):
         # ---------------
         # Entangled to the config.py code! :'((
         # ---------------
+        if not validate_locationiq_key(settings.env.LOCATIONIQ_API_KEY):
+            self.notify("Invalid LocationIQ API key.\nCanceling save. ಠ╭╮ಠ", severity="error")
+            return
+
         try:
             settings.save()
             self.notify("Config Saved")
@@ -154,6 +159,8 @@ class DynamicConfigScreen(ModalScreen):
             section_name = section.id.replace("section-container-", "")
             for field_meta in self.sections[section_name]:
                 field_name = field_meta.pathed_name
+                if "LOCATIONIQ_API_KEY" in field_name:
+                    continue
 
                 widget_name = self.get_widget_name(field_meta)
                 if not widget_name:

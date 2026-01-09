@@ -15,7 +15,7 @@ from textual.widgets import Input, Button, Footer, Label
 
 from config.config import settings
 from src.app.screens.confirmationScreen import ConfirmationScreen
-from src.app.utils.locationImageManager import LocationImageManager
+from src.utils.locationImageManager import LocationImageManager
 from src.locator.mapping import generate_map
 
 geolocator = Nominatim(user_agent="Argus")

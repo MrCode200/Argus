@@ -1,3 +1,4 @@
+import logging
 import time
 from pathlib import Path
 from typing import Optional
@@ -16,6 +17,8 @@ from textual.worker import WorkerState
 from config.config import settings
 
 loader = Loader(".", verbose=False)
+
+logger = logging.getLogger("argus.app")
 
 # Galactic core gradient - from center outward to void (REVERSED)
 NEBULA_GRADIENT = Gradient(
@@ -52,6 +55,7 @@ class EphemerisesDownloadScreen(ModalScreen[Path | None]):
 
     def __init__(self, file_name: str, download_dir: Path, **kwargs):
         super().__init__(**kwargs)
+        self.file_name = file_name
         self.download_url = loader.build_url(file_name)
         self.file_path = download_dir.joinpath(file_name)
         self._worker: Optional[Worker] = None
@@ -90,8 +94,10 @@ class EphemerisesDownloadScreen(ModalScreen[Path | None]):
     def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
         if event.state == WorkerState.CANCELLED:
             self.notify("Download cancelled.", severity="information")
+            logger.info("Download cancelled.")
         elif event.state == WorkerState.ERROR:
             self.notify(f"Download failed.\nError: {event.worker.error}", severity="error")
+            logger.error(f"Download failed.\nError: {event.worker.error}", exc_info=event.worker.error)
 
     def _get_status_text(self) -> str:
         # Sort keys to ensure correct ordering
@@ -147,6 +153,7 @@ class EphemerisesDownloadScreen(ModalScreen[Path | None]):
                     if self._worker.is_cancelled:
                         return
 
+            logger.info(f"Download {self.file_name} completed.")
             self.app.call_from_thread(status_widget.update, STATUS_TEXT[1])
             time.sleep(2)
             self.app.call_from_thread(self.dismiss, self.file_path)
