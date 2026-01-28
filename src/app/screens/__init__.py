@@ -4,3 +4,4 @@ from .confirmationScreen import ConfirmationScreen
 from .ephemerisesDownloadScreen import EphemerisesDownloadScreen
 from .inputPromptScreen import InputPromptScreen
 from .dynamicConfigScreen import DynamicConfigScreen
+from .eyeConfigurationScreen import EyeConfigurationScreen

@@ -156,7 +156,7 @@ class FilteredFilePickerScreen(ModalScreen[dict[str, str | Path] | None]):
         self.app.push_screen(
             InputPromptScreen(
                 title="EFD\n(Ephemeris File Downloader)",
-                prompt="Enter ephemeris file name (e.g. de421.bsp)",
+                placeholder="Enter ephemeris file name (e.g. de421.bsp)",
             ),
             callback=self.add_file_callback
         )

@@ -120,7 +120,7 @@ class DevConfig(BaseModel):
     display_image_container: bool = Field(default=True, description="Show image container on startup")
     force_push_screens: bool = Field(default=False, description="Force push setup screens")
     auto_continue: bool = Field(default=True, description="Automatically continue from last session")
-    exit_on_worker_error: bool = Field(default=False, description="Exit when worker errors occur")
+    raise_on_error: bool = Field(default=False, description="Raises when errors occur")
 
     def get_value(self, field_name: str, ignore_debug_mode: bool = False) -> bool:
         """Get field value, returns False if debug_mode is False (unless ignored)."""
@@ -251,6 +251,7 @@ class AppState(BaseModel):
     last_address: Optional[str] = None
     last_ephemeris_file: Optional[Path] = None
     last_celestial_body: Optional[str] = None
+    network_identifier: Optional[str] = None
 
     @classmethod
     def load(cls) -> "AppState":

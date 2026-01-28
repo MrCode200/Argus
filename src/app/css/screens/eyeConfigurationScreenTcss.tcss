@@ -1,0 +1,140 @@
+/* Eye Configuration Screen Styles */
+EyeConfigurationScreen {
+    align: center middle;
+}
+
+#main {
+    align: center middle;
+    width: 70;
+    height: auto;
+    background: $surface;
+    border: thick $primary;
+    padding: 2 4;
+
+    #title_lbl {
+        width: 100%;
+        text-align: center;
+        text-style: bold;
+        color: $accent;
+        margin-bottom: 1;
+        padding: 1;
+    }
+
+    #connection_info {
+        width: 100%;
+        height: auto;
+        background: $panel;
+        border: solid $primary-background;
+        padding: 1 2;
+        margin: 1 0;
+
+        #connection_header {
+            text-style: bold;
+            color: $text;
+            margin-bottom: 1;
+        }
+
+        #network_identifier_lbl {
+            color: $text-muted;
+            margin-bottom: 1;
+        }
+
+        #connection_status_lbl {
+            text-style: bold;
+            margin-top: 1;
+
+            &.connected {
+                color: $success;
+            }
+
+            &.disconnected {
+                color: $error;
+            }
+        }
+    }
+
+    #device_info_section {
+        width: 100%;
+        height: auto;
+        background: $panel;
+        border: solid $primary-background;
+        padding: 1 2;
+        margin: 1 0;
+
+        #device_info_header {
+            text-style: bold;
+            color: $text;
+            margin-bottom: 1;
+        }
+
+        #device_name_lbl, #degrees_per_step_lbl {
+            color: $text-muted;
+            margin: 0 0 1 0;
+        }
+    }
+
+    #loading_container {
+        width: 100%;
+        height: auto;
+        align: center middle;
+        background: $boost;
+        border: solid $accent;
+        padding: 2;
+        margin: 1 0;
+
+        #loading_indicator {
+            width: auto;
+            height: auto;
+        }
+
+        #loading_text {
+            width: 100%;
+            text-align: center;
+            color: $text;
+            text-style: bold;
+            margin-top: 1;
+        }
+    }
+
+    #action_buttons {
+        width: 100%;
+        height: auto;
+        align: center middle;
+        margin: 2 0;
+
+        Button {
+            min-width: 20;
+            margin: 0 1;
+        }
+
+        #connect_disconnect_btn {
+            width: 25;
+        }
+
+        #calibrate_btn {
+            width: 25;
+
+            &:disabled {
+                opacity: 0.5;
+            }
+        }
+    }
+
+    #exit_btn {
+        width: 100%;
+        margin-top: 2;
+    }
+
+    Button:disabled {
+        opacity: 0.5;
+    }
+}
+
+/* Responsive adjustments */
+Screen.-wide #main {
+    width: 80;
+}
+
+Screen.-narrow #main {
+    width: 60;
+}

@@ -1,6 +1,8 @@
 import asyncio
+import json
 import logging
 import math
+import socket
 from pathlib import Path
 from typing import Optional
 
@@ -21,13 +23,13 @@ from textual_image.widget import Image
 
 from config.config import settings, app_state
 from src.app.screens import PromptEyesLocationScreen, FilteredFilePickerScreen, EphemerisesDownloadScreen, \
-    ConfirmationScreen
+    ConfirmationScreen, EyeConfigurationScreen
 from src.app.screens.dynamicConfigScreen import DynamicConfigScreen
 from src.app.screens.filteredFilePickerScreen import FilteredDirectoryTree
 from src.app.screens.promptEyesLocationScreen import geolocator
 from src.app.widgets import ImageDisplay, StatusIndicator
 from src.constants import AngleUnit, DistanceUnit, CARDINAL_DIRECTIONS_CIRCLE_PATH, RED_DOT_PATH, \
-    CARDINAL_DIRECTIONS_COORDINATES
+    CARDINAL_DIRECTIONS_COORDINATES, DeviceInfo
 from src.constants.uiText import ADDRESS_LABEL, LATITUDE_LABEL, LONGITUDE_LABEL, TARGET_SELECT_LABEL, \
     EPHEMERIS_FILE_SELECT_LABEL
 from src.locator.astronomy import get_relative_altazd
@@ -62,7 +64,7 @@ class ArgusApp(App):
         Binding("ctrl+b", "open_picker", "Open Picker", show=True),
         Binding("ctrl+d", "toggle_display_data", "Toggle Display", show=True),
         Binding("ctrl+s", "open_config", "Config", show=True),
-        Binding("ctrl+r", "connect_device", "Connect Device", show=True)
+        Binding("ctrl+r", "action_open_eye_dashboard", "Connect Eye", show=True)
     ]
 
     # --- Initialization ---
@@ -74,7 +76,10 @@ class ArgusApp(App):
         self.ephemeris_file: Optional[Path] = None
         self.celestial_body: Optional[str] = None
         self._worker: Optional[Worker] = None
-        self.device_connected: bool = False
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.device_info: Optional[DeviceInfo] = None
+        self.last_altazd_sent: dict[str, Optional[float]] = {"altitude": None, "azimuth": None}
+        self.connected = False
 
         self._load_unit_settings()
 
@@ -107,11 +112,11 @@ class ArgusApp(App):
 
                 with Container(id="menu-container", classes="container-menu-6x6"):
                     yield Button("▶ Start Tracking", variant="success", id="btn-start-tracking")
-                    yield Button("📡 Connect to the Eye", variant="warning", id="btn-connect-to-the-eye")
-                    yield Button("🌍 Update Position", id="btn-update-position")
-                    yield Button("🎯 Set Target", variant="primary", id="btn-set-target")
-                    yield Button("🧰 Open Config ", variant="default", id="btn-open-config")
-                    yield Button("📘 Help (Manual)", variant="primary", id="btn-help-manual")
+                    yield Button("📡 Eye's Dashboard", variant="primary", id="btn-eyes-dashboard")
+                    yield Button("🎯 Select Target", variant="primary", id="btn-set-target")
+                    yield Button("🌍 Update Location", variant="primary", id="btn-update-position")
+                    yield Button("⚙  Settings", variant="default", id="btn-open-config")
+                    yield Button("📘 Help", variant="default", id="btn-help-manual")
 
                 # Location Section
                 with Collapsible(title="📍 Observer Location", collapsed=False, id="location-collapsible"):
@@ -220,13 +225,15 @@ class ArgusApp(App):
         logger.debug(f"Button pressed: {event.button.id}")
 
         if event.button.id == "btn-start-tracking":
-            self._handle_start_button()
-        elif event.button.id == "btn-connect-device":
-            self.action_connect_device()
+            self.action_start()
+        elif event.button.id == "btn-eyes-dashboard":
+            self.action_open_eye_dashboard()
         elif event.button.id == "btn-update-position":
             self.action_change_address()
         elif event.button.id == "btn-set-target":
             self.action_open_picker()
+        elif event.button.id == "btn-open-config":
+            self.action_open_config()
 
     def on_tabbed_content_tab_activated(self, event: TabbedContent.TabActivated) -> None:
         """Handle tab switching to update CSS classes for layout adjustments."""
@@ -250,7 +257,8 @@ class ArgusApp(App):
 
         self.query_one("#red-cross-image", ImageDisplay).offset = CARDINAL_DIRECTIONS_COORDINATES.CENTER
 
-    # --- Actions (Keybindings) ---
+    # --- Actions ---
+    # To see action_start go to AltAzD calculation & Compass
     def action_change_address(self) -> None:
         """Open the address/location selection screen."""
         self.push_screen(
@@ -306,8 +314,10 @@ class ArgusApp(App):
         self.query_one("#azimuth_lbl", Label).display = display
         self.query_one("#distance_lbl", Label).display = display
 
-    def action_connect_device(self):
-        self.device_connected = not self.device_connected
+    def action_open_eye_dashboard(self):
+        self.push_screen(
+            EyeConfigurationScreen()
+        )
 
     # --- Session Management ---
     def continue_from_last_session(self, event: Button.Pressed) -> None:
@@ -463,7 +473,7 @@ class ArgusApp(App):
             distance_lbl.display = show
 
     # --- AltAzD Calculation & Compass ---
-    def _handle_start_button(self) -> None:
+    def action_start(self, *args, **kwargs) -> None:
         """
         Validate requirements and start the celestial body tracking worker.
         """
@@ -507,15 +517,17 @@ class ArgusApp(App):
             )
             return
 
-        logger.info(f"Starting tracking worker for '{self.celestial_body}' at '{self.user_location}' with refresh rate: {settings.tracking.refresh_rate}s")
+        logger.info(
+            f"Starting tracking worker for '{self.celestial_body}' at '{self.user_location}' with refresh rate: {settings.tracking.refresh_rate}s"
+        )
         self._worker = self.run_worker(
-            self._get_altazd,
+            self._run_position_tracking_loop,
             exclusive=True,
-            exit_on_error=settings.dev.get_value("exit_on_worker_error")
+            exit_on_error=settings.dev.get_value("raise_on_error")
         )
         self.query_one("#image-container", Container).display = True
 
-    async def _get_altazd(self, refresh_rate: float = 0.1) -> None:
+    async def _run_position_tracking_loop(self, refresh_rate: float = 0.1) -> None:
         """
         Continuously calculate and update altitude, azimuth, and distance.
         """
@@ -554,11 +566,46 @@ class ArgusApp(App):
 
                 old_alt, old_az, old_d = alt, az, d
                 self._update_compass(alt, az)
+                self._broadcast_position_to_eye(alt, az)
 
                 await asyncio.sleep(refresh_rate)
         except Exception as e:
-            logger.error("Error in _get_altazd worker", exc_info=e)
+            logger.error("Error in _run_position_tracking_loop worker", exc_info=e)
             raise
+
+    def _broadcast_position_to_eye(self, alt: Angle, az: Angle):
+        if not self.connected:
+            return
+
+        # Check if we need to send new position
+        altitude_changed = (
+                self.last_altazd_sent["altitude"] is None or
+                abs(self.last_altazd_sent["altitude"] - alt.degrees) >= self.device_info.degrees_per_step
+        )
+
+        azimuth_changed = (
+                self.last_altazd_sent["azimuth"] is None or
+                abs(self.last_altazd_sent["azimuth"] - az.degrees) >= self.device_info.degrees_per_step
+        )
+
+        # Send if either axis changed enough
+        if altitude_changed or azimuth_changed:
+            try:
+                logger.info(f"Broadcasting new position: {alt.degrees=}; {az.degrees=}")
+                self.client.send(
+                    json.dumps({
+                        "altitude": alt.degrees,
+                        "azimuth": az.degrees
+                    }).encode()
+                )
+
+                self.last_altazd_sent["altitude"] = alt.degrees
+                self.last_altazd_sent["azimuth"] = az.degrees
+
+            except Exception as e:
+                logger.error("Failed to broadcast new celestial body's position to eye", exc_info=e)
+                if settings.dev.get_value("raise_on_error"):
+                    raise
 
     def _update_tracking_labels(
             self,

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from textual.binding import Binding
 from textual.containers import HorizontalGroup, VerticalGroup, Container
 from textual.screen import ModalScreen
@@ -12,16 +14,17 @@ class InputPromptScreen(ModalScreen[str]):
 
     CSS_PATH = "../css/screens/inputPromptScreenTcss.tcss"
 
-    def __init__(self, title: str, prompt: str, **kwargs):
+    def __init__(self, title: str, placeholder: str, default_value: Optional[str] = None, **kwargs):
         super().__init__(**kwargs)
         self.title = title
-        self.prompt = prompt
+        self.placeholder = placeholder
+        self.default_value = default_value
 
     def compose(self) -> ComposeResult:
         with VerticalGroup():
             yield Label(self.title)
             with Container(id="input_container"):
-                yield Input(placeholder=self.prompt)
+                yield Input(value=self.default_value, placeholder=self.placeholder)
             with HorizontalGroup():
                 yield Button("Submit", variant="success", id="submit_btn")
                 yield Button("Cancel", variant="error", id="cancel_btn")

@@ -80,7 +80,8 @@ def create_missing_files_and_folders(logger: logging.Logger, settings):
 {
   "last_address": "",
   "last_ephemeris_file": "",
-  "last_celestial_body": ""
+  "last_celestial_body": "",
+  "network_identifier": ""
 }
     """
 
@@ -121,22 +122,25 @@ def main():
             TextColumn("•"),
             TimeElapsedColumn(),
     ) as progress:
-        task = progress.add_task("Initializing...", total=5)
+        task = progress.add_task("Initializing...", total=6)
 
-        progress.update(task, description="Initializing logger...", advance=1)
+        progress.update(task, description="🪵 Initializing logger...", advance=1)
         logger = init_logger()
 
-        progress.update(task, description="Checking API key...", advance=1)
+        progress.update(task, description="🗝️ Checking API key...", advance=1)
         ensure_api_key()
 
-        progress.update(task, description="Loading configuration...", advance=1)
+        progress.update(task, description="⚙️ Loading configuration...", advance=1)
         # defer config & app imports until logger is alive
         from config.config import settings
-        from src.banner import load_banner
-        from src.app import ArgusApp
 
-        progress.update(task, description="Creating directories and files...", advance=1)
+        progress.update(task, description="📂 Creating directories and files...", advance=1)
         create_missing_files_and_folders(logger, settings)
+
+        # defer app import until logger is alive
+        progress.update(task, description="🍎 Loading application...", advance=1)
+        from src.app import ArgusApp
+        from src.banner import load_banner
 
         progress.update(task, description="✅ Finished Setup", advance=1)
         time.sleep(1)
