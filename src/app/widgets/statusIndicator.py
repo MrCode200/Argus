@@ -1,8 +1,16 @@
+from typing import Literal, Optional
+
 from textual.widgets import Static, Label
 from textual.app import ComposeResult
 
 class StatusIndicator(Static):
     """A status indicator widget showing system state."""
+    status_colors = {
+        "active": "green",
+        "inactive": "dim",
+        "error": "red",
+        "warning": "yellow"
+    }
 
     def __init__(self, label: str, status: str = "inactive", **kwargs) -> None:
         super().__init__(**kwargs)
@@ -10,17 +18,14 @@ class StatusIndicator(Static):
         self.status = status
 
     def compose(self) -> ComposeResult:
-        yield Label(f"● {self.label_text}", id=f"status_{self.id}")
+        color = self.status_colors.get(self.status)
+        yield Label(f"[{color}]● {self.label_text}[/]", id=f"status_{self.id}")
 
-    def set_status(self, status: str) -> None:
+    def update_status(self, status: Literal['active', 'inactive', 'error', 'warning'], label: Optional[str] = None) -> None:
         """Update status: 'active', 'inactive', 'error', 'warning'"""
+        self.label_text = label if label is not None else self.label_text
         self.status = status
-        status_colors = {
-            "active": "green",
-            "inactive": "dim",
-            "error": "red",
-            "warning": "yellow"
-        }
-        color = status_colors.get(status, "dim")
+
+        color = self.status_colors.get(status)
         label = self.query_one(Label)
-        label.update(f"[{color}]●[/] {self.label_text}")
+        label.update(f"[{color}]● {self.label_text}[/]")

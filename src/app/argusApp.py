@@ -46,7 +46,6 @@ logger = logging.getLogger("argus.app")
 
 # TODO: Add slider to time.now() + deltaTime
 ## Tracking Display Settings
-# TODO: Toggleable If for altazd values should be calculated through average of n values or based on last value
 
 class ArgusApp(App):
     """
@@ -103,12 +102,11 @@ class ArgusApp(App):
                 with Container(id="container-dock"):
                     yield Label("--- Argus Control Center ---", id="menu-title")
                     with Container(classes="container-menu-6x6"):
-                        yield StatusIndicator("Tracking1")
-                        yield StatusIndicator("Tracking2")
-                        yield StatusIndicator("Tracking3")
-                        yield StatusIndicator("Tracking4")
-                        yield StatusIndicator("Tracking5")
-                        yield StatusIndicator("Tracking6")
+                        yield StatusIndicator("Stopped", status="error", id="tracking-status-indicator")
+                        yield StatusIndicator("Disconnected", status="error", id="connected-status-indicator")
+                        yield StatusIndicator("Missing Target", status="error", id="target-status-indicator")
+                        yield StatusIndicator("Missing Location", status="error", id="location-status-indicator")
+                        yield StatusIndicator("Uncalibrated", status="error", id="calibration-status-indicator")
 
                 with Container(id="menu-container", classes="container-menu-6x6"):
                     yield Button("▶ Start Tracking", variant="success", id="btn-start-tracking")
@@ -140,7 +138,7 @@ class ArgusApp(App):
                         yield Label(EPHEMERIS_FILE_SELECT_LABEL.format(ephemeris_file="Not Loaded..."),
                                     id="ephemeris-info-label", classes="info-label dim")
 
-                with Collapsible(title="🪵 Log", collapsed=True, id="log-collapsible"):
+                with Collapsible(title="🪵 Log", collapsed=False, id="log-collapsible"):
                     # Get Log Buffer Handler and pass to LoggingRichLog widget
                     for handler in logger.handlers:
                         if isinstance(handler, LogBufferHandler):
@@ -202,9 +200,6 @@ class ArgusApp(App):
         self.theme = "flexoki"
         self.title = "ARGUS"
 
-        if not settings.dev.get_value("display_image_container"):
-            self.query_one("#image-container", Container).display = False
-
         if not settings.dev.get_value("auto_continue"):
             self.push_screen(
                 ConfirmationScreen(
@@ -222,7 +217,6 @@ class ArgusApp(App):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press events."""
         event.stop()
-        logger.debug(f"Button pressed: {event.button.id}")
 
         if event.button.id == "btn-start-tracking":
             self.action_start()
@@ -261,6 +255,10 @@ class ArgusApp(App):
     # To see action_start go to AltAzD calculation & Compass
     def action_change_address(self) -> None:
         """Open the address/location selection screen."""
+        self.query_one("#location-status-indicator", StatusIndicator).update_status(
+            status="warning",
+            label="Updating Location..."
+        )
         self.push_screen(
             PromptEyesLocationScreen(),
             callback=self.handle_location_result
@@ -268,6 +266,10 @@ class ArgusApp(App):
 
     def action_open_picker(self) -> None:
         """Open the ephemeris file picker screen."""
+        self.query_one("#target-status-indicator", StatusIndicator).update_status(
+            status="warning",
+            label=f"Updating Target..."
+        )
         self.push_screen(
             FilteredFilePickerScreen(path="./ephemerises", add_file_callback=self.download_ephemeris_file),
             callback=self.handle_file_picker_result
@@ -340,12 +342,8 @@ class ArgusApp(App):
                 "target_body": last_celestial_body
             })
 
-        if (
-                (last_address is None or event.button.id == "red_btn") and
-                settings.dev.get_value("force_push_screens", ignore_debug_mode=True)
-        ):
-            self.push_screen(PromptEyesLocationScreen())
-        elif last_address is not None and event.button.id == "green_btn":
+
+        if last_address is not None and event.button.id == "green_btn":
             logger.debug(f"Continuing from last session: Address: {last_address}")
             self.handle_location_result(geolocator.geocode(last_address))
 
@@ -358,6 +356,13 @@ class ArgusApp(App):
             result: Geopy Location object or None if selection was cancelled.
         """
         if not isinstance(result, Location):
+            label = (f"Location: {self.user_location.address[:12]}..." if len(
+                    self.user_location.address) > 15 else self.user_location.address) if self.user_location.address is not None else "Missing Location"
+            status = "active" if self.user_location.address is not None else "error"
+            self.query_one("#location-status-indicator", StatusIndicator).update_status(
+                status=status,
+                label=label
+            )
             logger.warning("Location selection was cancelled or invalid")
             return
 
@@ -371,6 +376,11 @@ class ArgusApp(App):
         self.query_one("#longitude_lbl", Label).update(
             LONGITUDE_LABEL.format(longitude=str(self.user_location.longitude)))
 
+        self.query_one("#location-status-indicator", StatusIndicator).update_status(
+            status="active",
+            label=f"Location: {self.user_location.address[:12]}..." if len(
+                self.user_location.address) > 15 else self.user_location.address
+        )
     # --- File Picker Handling ---
     def download_ephemeris_file(self, file_name: str) -> None:
         """
@@ -406,6 +416,12 @@ class ArgusApp(App):
             result: Dictionary with 'path' and 'target_body' keys, or None if cancelled.
         """
         if result is None:
+            label = f"Target: {self.celestial_body}" if self.celestial_body is not None else "Missing Target"
+            status = "active" if self.celestial_body is not None else "error"
+            self.query_one("#target-status-indicator", StatusIndicator).update_status(
+                status=status,
+                label=label
+            )
             return
 
         if self._worker is not None and self._worker.is_running:
@@ -447,6 +463,10 @@ class ArgusApp(App):
             self.query_one("#celestial-body-lbl", Label).update(
                 f" Celestial Body: [b]{celestial_body.upper()}[/b] "
             )
+            self.query_one("#target-status-indicator", StatusIndicator).update_status(
+                status="active",
+                label=f"Target: {celestial_body}"
+            )
             self.app.notify(
                 f"Selected ephemeris file: {ephemeris_file}\n"
                 f"✓ Target configured: {celestial_body} ",
@@ -483,10 +503,8 @@ class ArgusApp(App):
             self._worker = None
             self.query_one("#btn-start-tracking", Button).label = "[bold]▶[/bold] Start Tracking"
             self.query_one("#btn-start-tracking", Button).variant = "success"
+            self.query_one("#tracking-status-indicator", StatusIndicator).update_status("error", "Stopped")
             return
-        else:
-            self.query_one("#btn-start-tracking", Button).label = "[bold]⏸ [/bold] Stop Tracking"
-            self.query_one("#btn-start-tracking", Button).variant = "error"
 
         if self.user_location is None or self.ephemeris_file is None or self.celestial_body is None:
             error_msg = "Missing required selections"
@@ -516,6 +534,10 @@ class ArgusApp(App):
                 severity="error"
             )
             return
+
+        self.query_one("#btn-start-tracking", Button).label = "[bold]⏸ [/bold] Stop Tracking"
+        self.query_one("#btn-start-tracking", Button).variant = "error"
+        self.query_one("#tracking-status-indicator", StatusIndicator).update_status("active", "Tracking")
 
         logger.info(
             f"Starting tracking worker for '{self.celestial_body}' at '{self.user_location}' with refresh rate: {settings.tracking.refresh_rate}s"

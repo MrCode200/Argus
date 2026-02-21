@@ -118,7 +118,6 @@ class DevConfig(BaseModel):
     skip_banner_animation: bool = Field(default=True, description="Skip startup banner animation")
     skip_launch_code_prompt: bool = Field(default=True, description="Skip launch code prompt")
     display_image_container: bool = Field(default=True, description="Show image container on startup")
-    force_push_screens: bool = Field(default=False, description="Force push setup screens")
     auto_continue: bool = Field(default=True, description="Automatically continue from last session")
     raise_on_error: bool = Field(default=False, description="Raises when errors occur")
 

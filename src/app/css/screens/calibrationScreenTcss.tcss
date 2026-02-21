@@ -1,0 +1,48 @@
+/* Simple Calibration Screen Styles */
+
+CalibrationScreen {
+    align: center middle;
+}
+
+#cal_container {
+    width: 60;
+    height: auto;
+    background: $surface;
+    border: thick $primary;
+    padding: 2 4;
+}
+
+#cal_title {
+    width: 100%;
+    text-align: center;
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 2;
+}
+
+#cal_accuracy {
+    width: 100%;
+    text-align: center;
+    text-style: bold;
+    color: $success;
+    margin-bottom: 2;
+}
+
+#cal_timer {
+    width: 100%;
+    text-align: center;
+    color: $text-muted;
+    margin-bottom: 2;
+}
+
+#cal_heading, #cal_mag {
+    width: 100%;
+    text-align: center;
+    color: $text;
+    margin: 1 0;
+}
+
+#cal_cancel {
+    width: 100%;
+    margin-top: 2;
+}
