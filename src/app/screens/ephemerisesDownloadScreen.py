@@ -87,7 +87,7 @@ class EphemerisesDownloadScreen(ModalScreen[Path | None]):
             if self._worker is not None:
                 self._worker.cancel()
             self._worker = self.run_worker(self._download_bsp, thread=True, exclusive=True,
-                                           exit_on_error=settings.dev.get_value("exit_on_worker_error"))
+                                           exit_on_error=settings.dev.get_value("raise_on_error"))
 
             event.button.disabled = False
 

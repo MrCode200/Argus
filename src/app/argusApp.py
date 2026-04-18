@@ -442,6 +442,10 @@ class ArgusApp(App):
             self.query_one("#btn-start-tracking", Button).label = "[bold]▶ [/bold] Start Tracking"
             self.query_one("#btn-start-tracking", Button).variant = "success"
 
+            self.query_one("#tracking-status-indicator", StatusIndicator).update_status(
+                'error', "Stopped"
+            )
+
         ephemeris_file = result["path"]
         celestial_body = result["target_body"]
 
